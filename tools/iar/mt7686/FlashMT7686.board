@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+
+<flash_board>
+  <pass>
+    <loader>Z:\workspace\git_workspace\geneva-dev-maindev\gva\tools\iar\mt7686\FlashMT7686.flash</loader>
+    <range>CODE 0x0 0x0</range>
+  </pass>
+</flash_board>
+
+

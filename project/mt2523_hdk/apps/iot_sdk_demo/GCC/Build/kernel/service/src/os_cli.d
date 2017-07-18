@@ -1,0 +1,1 @@
+/home/zhangchg/linkit_sdk/project/mt2523_hdk/apps/iot_sdk_demo/GCC/Build/kernel/service/src/os_cli.o /home/zhangchg/linkit_sdk/project/mt2523_hdk/apps/iot_sdk_demo/GCC/Build/kernel/service/src/os_cli.d: ../../../../../kernel/service/src/os_cli.c
