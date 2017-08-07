@@ -56,7 +56,8 @@
 bt_sink_srv_profile_t g_sink_srv_hf[BT_SINK_SRV_CM_MAX_DEVICE_NUMBER];
 bt_sink_srv_hf_context_t g_sink_srv_hf_context[BT_SINK_SRV_CM_MAX_DEVICE_NUMBER];
 bt_sink_srv_hf_context_t *g_sink_srv_hf_missed_call_device_p;
-bt_hfp_audio_codec_type_t g_sink_srv_hf_audio_codec = (bt_hfp_audio_codec_type_t)(BT_HFP_CODEC_TYPE_CVSD | BT_HFP_CODEC_TYPE_MSBC);
+//bt_hfp_audio_codec_type_t g_sink_srv_hf_audio_codec = (bt_hfp_audio_codec_type_t)(BT_HFP_CODEC_TYPE_CVSD | BT_HFP_CODEC_TYPE_MSBC);
+bt_hfp_audio_codec_type_t g_sink_srv_hf_audio_codec = (bt_hfp_audio_codec_type_t)(BT_HFP_CODEC_TYPE_CVSD );
 
 static const uint16_t bt_sink_srv_hf_tone_16ksr[] = {
     0x0000, 0xffff, 0xe475, 0xcd1a, 0xcd1a, 0xb805, 0xbd80, 0xcd1b, 0xb806, 0x0000, 0xbd80, 0x32e6, 0xcd1b, 0x47fb, 0xe475, 0x32e5,

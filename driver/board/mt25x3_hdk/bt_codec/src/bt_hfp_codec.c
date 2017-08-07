@@ -52,6 +52,11 @@
 #include "audio_mixer.h"
 #endif
 
+extern uint32_t msbc_pcm_encode(int16_t *p_in_buf, uint32_t in_byte_cnt);
+extern uint32_t msbc_pcm_decode(int16_t *p_ou_buf, uint32_t ou_byte_cnt);
+extern uint32_t cvsd_pcm_encode(int16_t *p_in_buf, uint32_t in_byte_cnt);
+extern uint32_t cvsd_pcm_decode(int16_t *p_ou_buf, uint32_t ou_byte_cnt);
+
 typedef struct {
     uint8_t packet_length;
     uint8_t packet_number_per_interrupt;
@@ -650,6 +655,10 @@ static void bt_hfp_tx_cvsd_encode(bt_hfp_speech_tx_information_t *p_tx_info)
             uint32_t in_byte_cnt       = BT_HFP_TX_CVSD_PCM_8KHZ_BUFFER_SIZE_PER_PACKET;
             uint32_t ou_byte_cnt       = in_byte_cnt << 3;
             int32_t result;
+
+			/* cvsd pcm data encode */
+			cvsd_pcm_encode(p_in_buf, in_byte_cnt);
+
             result = cvsd_src_up_sampling_process (handle, p_tmp_buf, p_in_buf, p_ou_buf, in_byte_cnt);
             if (result < 0) {   /* CVSD SRC up sampling error */
                 TASK_LOG_E("CVSD up %d\r\n", result);
@@ -729,13 +738,20 @@ static void bt_hfp_rx_cvsd_decode(bt_hfp_speech_rx_information_t *p_rx_info, uin
                         int16_t *p_tmp_buf   = p_rx_info->pcm_tmp_buf;
                         void    *handle      = p_rx_info->src_down_sampling.handle;
                         uint32_t in_byte_cnt = BT_HFP_RX_CVSD_PCM_64KHZ_BUFFER_SIZE_PER_PACKET; /* 240 samples @ 64kHz (= 3.75 ms) */
+						uint32_t ou_byte_cnt = BT_HFP_RX_CVSD_PCM_8KHZ_BUFFER_SIZE_PER_PACKET; /* 30 samples @ 8kHz (= 3.75 ms) */
                         int32_t result;
                         result = cvsd_src_down_sampling_process (handle, p_tmp_buf, p_in_buf, p_ou_buf, in_byte_cnt);
                         if (result < 0) {   /* CVSD SRC down sampling error */
                             TASK_LOG_E("CVSD dw %d\r\n", result);
                             return;
                         }
-                    }
+						else
+						{
+							/* cvsd pcm data decode */
+							cvsd_pcm_decode(p_ou_buf, ou_byte_cnt);
+						}
+
+					}
                     param.bad_frame_indicator  = 0;
                     param.bt_ev3_half_bad_flag = 0;
                     num_good++;
@@ -851,7 +867,11 @@ static void bt_hfp_tx_msbc_encode(bt_hfp_speech_tx_information_t *p_tx_info)
                 uint32_t in_byte_cnt = BT_HFP_TX_MSBC_PCM_16KHZ_BUFFER_SIZE_PER_FRAME;
                 uint32_t ou_byte_cnt = BT_HFP_TX_MSBC_BITSTREAM_SIZE_PER_FRAME;
                 int32_t result;
-                result = msbc_encode_process (handle, p_in_buf, &in_byte_cnt, p_ou_buf, &ou_byte_cnt);
+
+				/* msbc pcm data encode */
+				msbc_pcm_encode(p_in_buf, in_byte_cnt);
+
+				result = msbc_encode_process (handle, p_in_buf, &in_byte_cnt, p_ou_buf, &ou_byte_cnt);
                 if (result < 0) {   /* mSBC encode error */
                     TASK_LOG_E("mSBC en %d\r\n", result);
                     return;
@@ -914,7 +934,11 @@ static void bt_hfp_rx_msbc_decode(bt_hfp_speech_rx_information_t *p_rx_info, uin
                         if (result < 0) {   /* mSBC decode error */
                             memset(p_ou_buf, 0, BT_HFP_RX_MSBC_PCM_16KHZ_BUFFER_SIZE_PER_FRAME);
                             TASK_LOG_E("mSBC de %d\r\n", result);
-                        }
+                        }else 
+						{
+							/* msbc pcm data decode */ 
+							msbc_pcm_decode(p_ou_buf, ou_byte_cnt);
+						}
                     }
                     param.bad_frame_indicator  = 0;
                     param.bt_ev3_half_bad_flag = 0;

@@ -12,6 +12,7 @@ C_FILES  += $(BOARD_SRC)/backlight/mt25x3_hdk_backlight.c
 ifeq ($(MTK_BT_CODEC_ENABLED),y)
   C_FILES  += $(BT_CODEC_SRC)/src/bt_a2dp_codec.c
   C_FILES  += $(BT_CODEC_SRC)/src/bt_hfp_codec.c
+#  C_FILES  += $(BT_CODEC_SRC)/src/bt_hfp_encrypt.c
 endif
 
 
