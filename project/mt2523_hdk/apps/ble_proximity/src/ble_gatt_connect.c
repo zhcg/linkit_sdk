@@ -357,6 +357,9 @@ static bt_status_t ble_gatt_connect_le_disconnect_ind(bt_status_t status, void *
         err = BLE_GATT_ERR_SUCCESS_1ST;
     }
 
+	/* start advertising */
+    bt_gatt_connect_start_advertising(BLE_GATT_DEV_NAME);
+
     ble_gatt_report("[gatt][connect]le_disconnect_ind--ret: %d, err: %d\n",
         ret, err);
 

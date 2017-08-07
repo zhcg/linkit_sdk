@@ -104,22 +104,26 @@
 
 /* Link Loss Service */
 #define BLE_LLS_START_HANDLE                (0x0700)
-#define BLE_LLS_END_HANDLE                  (0x0702)
+#define BLE_LLS_END_HANDLE                  (0x0705)
 #define BLE_LLS_REKS                        (0)
 
 /* Link Loss value handle */
 #define BLE_LLS_VAL_HD_AL                   (0x0702)
+#define BLE_LLS_VAL_HD_AL_READ              (0x0704)
 
 
 
 #define BT_GATT_UUID16_IMMEDIATE_ALERT_SERVICE                (0x1802)      /**< Immediate alert service. */
-#define BT_GATT_UUID16_LINK_LOSS_SERVICE                      (0x1803)      /**< Immediate alert service. */
+#define BT_GATT_UUID16_LINK_LOSS_SERVICE                      (0x18FF)      /**< Immediate alert service. */
 
 
-#define BT_SIG_UUID16_ALERT_LEVEL                             (0x2A06)      /**< Alert level. */
+#define BT_SIG_UUID16_ALERT_LEVEL                             (0x2AFF) //write     /**< Alert level. */
+#define BT_SIG_UUID16_ALERT_LEVEL_READ                        (0x2AFE) //read      /**< Alert level. */
 
 
 
+#define CLIENT_CHARC_CONFIGURATION_NOTIFICATION  0x0001
+#define CLIENT_CHARC_CONFIGURATION_INDICATION  0x0002
 
 #define BLE_GATT_MAX_LINK                   (2)
 

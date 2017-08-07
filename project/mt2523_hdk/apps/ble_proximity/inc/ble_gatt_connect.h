@@ -47,7 +47,7 @@
 
 #define BT_ADDR_TYPE_UNKNOW 0xFF
 
-#define BLE_GATT_DEV_NAME                          "MediaTek_PXP"
+#define BLE_GATT_DEV_NAME                          "MediaTek_ZCG"
 
 typedef enum {
     BLE_GATT_CONNECT_INFO_HANDLE,   /* 0 */

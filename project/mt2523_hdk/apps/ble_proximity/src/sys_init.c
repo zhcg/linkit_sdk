@@ -443,8 +443,8 @@ static void prvSetupHardware(void)
 #endif
 
     /* turn off MIPI TX analog power */
-    hal_display_dsi_init(false);
-    hal_display_dsi_deinit();
+//    hal_display_dsi_init(false);
+//    hal_display_dsi_deinit();
 }
 
 /**
@@ -459,7 +459,7 @@ void system_init(void)
     SystemCoreClockUpdate();
 
     /* initialize UART2 as logging port */
-    log_uart_init(HAL_UART_2);
+    log_uart_init(HAL_UART_0);
 
     /* do infrastructure initialization */
     prvSetupHardware();

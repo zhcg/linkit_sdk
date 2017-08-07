@@ -38,12 +38,36 @@
 #include "ble_gatt_utils.h"
 #include "ble_gatt_srv_internal.h"
 
+#include <FreeRTOS.h>
+#include "timers.h"
+
+/*
+#include "task.h"
+#include "task_def.h"
+*/
+
+uint8_t tmp = 0;
+
+typedef struct {
+    uint16_t conn_handle;               /**< connect handle */
+    uint16_t is_notify;          /**< client config is notify or not*/
+    uint8_t lls_value[20];         /**< HeartRate Measurement vaule */
+
+    TimerHandle_t timer;
+} lls_app_cntx_t;
+
+lls_app_cntx_t g_lls_app;
+
 static ble_lls_context_t g_lls_context;
 
 static ble_lls_dev_info_t g_lls_dev_info[BLE_GATT_MAX_LINK];
 
+static void bt_lls_notify();
+
 static uint32_t bt_if_lls_alert_level_callback (const uint8_t rw, uint16_t handle,
     void *data, uint16_t size, uint16_t offset);
+
+static uint32_t bt_if_lls_client_config_callback(const uint8_t rw, uint16_t handle, void *data, uint16_t size, uint16_t offset);
 
 static ble_lls_dev_info_t *ble_lls_get_dev_info(ble_lls_dev_info_type_t type,
     void *para);
@@ -53,20 +77,46 @@ static void ble_lls_reset_dev_info(ble_lls_dev_info_t *dev_info);
 static const bt_uuid_t BT_SIG_UUID_ALERT_LEVEL =
     BT_UUID_INIT_WITH_UUID16(BT_SIG_UUID16_ALERT_LEVEL);
 
+static const bt_uuid_t BT_SIG_UUID_ALERT_LEVEL_READ =
+    BT_UUID_INIT_WITH_UUID16(BT_SIG_UUID16_ALERT_LEVEL_READ);
+
 BT_GATTS_NEW_PRIMARY_SERVICE_16(bt_if_lls_primary_service,
     BT_GATT_UUID16_LINK_LOSS_SERVICE);
 
+
+	/* write */
 BT_GATTS_NEW_CHARC_16_WRITABLE(bt_if_lls_char4_alert_level,
-    BT_GATT_CHARC_PROP_READ | BT_GATT_CHARC_PROP_WRITE, BLE_LLS_VAL_HD_AL,
+    //BT_GATT_CHARC_PROP_READ | BT_GATT_CHARC_PROP_WRITE, BLE_LLS_VAL_HD_AL,
+    BT_GATT_CHARC_PROP_WRITE, BLE_LLS_VAL_HD_AL,
     BT_SIG_UUID16_ALERT_LEVEL);
 
 BT_GATTS_NEW_CHARC_VALUE_CALLBACK(bt_if_lls_alert_level, BT_SIG_UUID_ALERT_LEVEL,
-    BT_GATTS_REC_PERM_READABLE | BT_GATTS_REC_PERM_WRITABLE, bt_if_lls_alert_level_callback);
+    BT_GATTS_REC_PERM_WRITABLE, bt_if_lls_alert_level_callback);
+
+
+	/* read */
+BT_GATTS_NEW_CHARC_16(bt_if_lls_char4_alert_level_read,
+	BT_GATT_CHARC_PROP_READ | BT_GATT_CHARC_PROP_NOTIFY | BT_GATT_CHARC_PROP_INDICATE, BLE_LLS_VAL_HD_AL_READ,
+    BT_SIG_UUID16_ALERT_LEVEL_READ);
+
+BT_GATTS_NEW_CHARC_VALUE_UINT16(bt_if_lls_alert_level_read, BT_SIG_UUID_ALERT_LEVEL_READ,
+                                BT_GATTS_REC_PERM_READABLE,
+                                0);
+	/* config */
+BT_GATTS_NEW_CLIENT_CHARC_CONFIG(bt_if_lls_client_config,
+                                 BT_GATTS_REC_PERM_READABLE | BT_GATTS_REC_PERM_WRITABLE,
+                                 bt_if_lls_client_config_callback);
+
 
 static const bt_gatts_service_rec_t *bt_if_lls_service_rec[] = {
     (const bt_gatts_service_rec_t *) &bt_if_lls_primary_service,
     (const bt_gatts_service_rec_t *) &bt_if_lls_char4_alert_level,
-    (const bt_gatts_service_rec_t *) &bt_if_lls_alert_level
+    (const bt_gatts_service_rec_t *) &bt_if_lls_alert_level,
+
+    (const bt_gatts_service_rec_t *) &bt_if_lls_char4_alert_level_read,
+    (const bt_gatts_service_rec_t *) &bt_if_lls_alert_level_read,
+
+    (const bt_gatts_service_rec_t *) &bt_if_lls_client_config,
 };
 
 const bt_gatts_service_t bt_if_lls_service = {
@@ -95,13 +145,36 @@ static uint32_t bt_if_lls_alert_level_callback (const uint8_t rw, uint16_t handl
     void *data, uint16_t size, uint16_t offset)
 {
     uint32_t ret = 0;
+    bt_status_t status;
+	int i;
     ble_gatt_char_alter_level_t char_al;
     ble_lls_dev_info_t *dev_info = NULL;
 
-    ble_gatt_report("[gatt][lls]al_cb(s)--rw: %d, hd: %d, size: %d, offset: %d\n",
-        rw, handle, size, offset);
+	uint8_t buff[27] = {0};
+    bt_gattc_charc_value_notification_indication_t *notify;
+    notify = (bt_gattc_charc_value_notification_indication_t *)buff;
 
-    dev_info = ble_lls_get_dev_info(BLE_LLS_DEV_INFO_HANDLE, (void *)&handle);
+    ble_gatt_report("[gatt][lls]al_cb(s)--hd: %d, size: %d, data: %02x %02x %02x %02x\n",
+        handle, size, *((uint8_t *)data+0), *((uint8_t *)data+1), *((uint8_t *)data+2), *((uint8_t *)data+3));
+
+	notify->attribute_value_length = 23;
+	notify->att_req.opcode = BT_ATT_OPCODE_HANDLE_VALUE_NOTIFICATION;;
+	notify->att_req.handle = 0x0704;
+	memcpy(notify->att_req.attribute_value, data, 20);
+	status = bt_gatts_send_charc_value_notification_indication(handle, notify);
+	BT_LOGD("LLS", "bt_lls_notify : notificaiton status = %d", status);
+
+/*
+	if (rw == BT_GATTS_CALLBACK_WRITE) {
+		LOG_I(common, "slz=====BT_GATTS_CALLBACK_WRITE====size: %d, rw: %d\n", size, rw);
+		for (i=0; i<size; i++) {
+			LOG_I(common, "data[%d]: 0x%x\n",i, *((uint8_t *)data+i));
+		}
+	}
+*/
+
+/*
+	dev_info = ble_lls_get_dev_info(BLE_LLS_DEV_INFO_HANDLE, (void *)&handle);
 
     if (rw == BT_GATTS_CALLBACK_WRITE) {
         if (size == sizeof(dev_info->alert_level)) { //Size check
@@ -111,22 +184,118 @@ static uint32_t bt_if_lls_alert_level_callback (const uint8_t rw, uint16_t handl
             char_al.handle = dev_info->handle;
             ble_gatt_srv_notify(BLE_GATT_SRV_LLS_AL_WRITE, &char_al);
         }
-    } else if (rw == BT_GATTS_CALLBACK_READ) {
-        if (size == sizeof(dev_info->alert_level)) { //Size check
-            *(uint8_t *)data = dev_info->alert_level;
-            ret = size;
-            char_al.al = dev_info->alert_level;
-            char_al.handle = dev_info->handle;
-            ble_gatt_srv_notify(BLE_GATT_SRV_LLS_AL_READ, &char_al);
-        } else if (0 == size) {
-            ret = sizeof(dev_info->alert_level); 
-        }
     }
-
     ble_gatt_report("[gatt][lls]al_cb(e)--ret: %d\n", ret);
+*/
     return ret;
 }
 
+static uint32_t bt_if_lls_client_config_callback(const uint8_t rw, uint16_t handle, void *data, uint16_t size, uint16_t offset)
+{
+    ble_gatt_report("client_config_callback : RW= %d, hd= %d, notify= %d, size= %d", rw, handle, *(uint16_t *)data, size);
+
+	if (rw == BT_GATTS_CALLBACK_WRITE) {
+		if (size != sizeof(g_lls_app.is_notify)) { //Size check
+			return 0;
+		}
+		g_lls_app.is_notify = *(uint16_t *)data;
+
+		if(g_lls_app.is_notify == CLIENT_CHARC_CONFIGURATION_NOTIFICATION)
+		{
+			g_lls_app.conn_handle = handle;
+		//	g_lls_app.timer = xTimerCreate("LLS Timer", 0xffff, pdFALSE, ( void *) 0,
+		//			(TimerCallbackFunction_t)bt_lls_notify);
+		//	xTimerChangePeriod(g_lls_app.timer, 60 / portTICK_PERIOD_MS, 0);
+		//	xTimerReset(g_lls_app.timer, 0);
+		//	bt_timer_start(g_lls_app.timer, 0, 60, bt_lls_notify);
+
+		}
+		else
+		{
+			if (g_lls_app.timer) {
+				xTimerStop(g_lls_app.timer, 0);
+				xTimerDelete(g_lls_app.timer, 0);
+		//		bt_timer_cancel(g_lls_app.timer);
+				BT_LOGD("LLS", "bt_lls_notify : stop... ");
+			}
+		
+		}
+			
+	}else {
+		if (size != 0) {
+			uint16_t *buf = (uint16_t *) data;
+			*buf = g_lls_app.is_notify;
+		}
+	}
+	return sizeof(g_lls_app.is_notify);
+}
+
+//======slz temporary define tx rx buffer struct========== 
+typedef struct xtransfer_packet {
+	uint8_t head_l;				//AA
+	uint8_t head_h;				//55
+	uint8_t packet_num;			//packet num
+	uint8_t buff[17];			//audio compression data
+}XTRANSFER;
+
+
+XTRANSFER g_tx_packet;
+XTRANSFER g_rx_packet;
+uint8_t g_num = 0;
+
+//======slz end===========================================
+/*
+	g_tx_packet.head_l = 0xAA;
+	g_tx_packet.head_h = 0x55;
+	g_tx_packet.packet_num = g_num;
+	for (i=0; i<sizeof(g_tx_packet.buff); i++) {
+		g_tx_packet.buff[i] = i;
+	}
+*/
+
+/* heart rate start ...*/
+static void bt_lls_notify()
+{
+    bt_status_t status;
+    uint16_t conn_handle;
+    TimerHandle_t timer;
+    uint8_t buff[6] = {0};
+    ble_lls_dev_info_t *dev_info = NULL;
+    bt_gattc_charc_value_notification_indication_t *notify;
+    notify = (bt_gattc_charc_value_notification_indication_t *)buff;
+    ble_gatt_report("bt_lls_notify : start... ");
+
+    conn_handle = g_lls_app.conn_handle;
+    timer = g_lls_app.timer;
+
+    dev_info = ble_lls_get_dev_info(BLE_LLS_DEV_INFO_HANDLE, (void *)&conn_handle);
+
+	if (dev_info->handle == NULL) {/*MAYBE link disconnect*/
+		xTimerStop(timer, 0);
+		xTimerDelete(timer, 0);
+		bt_timer_cancel(timer);
+		memset(&g_lls_app, 0 , sizeof(lls_app_cntx_t));
+		BT_LOGD("LLS", "connection link is invalid bt_lls_notify : stop... ");
+	} else {
+		if (timer) {
+			xTimerChangePeriod(timer, 60 / portTICK_PERIOD_MS, 0);
+			xTimerReset(timer, 0);
+			bt_timer_cancel(timer);
+		}
+		notify->attribute_value_length = 23;
+		notify->att_req.opcode = BT_ATT_OPCODE_HANDLE_VALUE_NOTIFICATION;;
+		notify->att_req.handle = 0x0704;
+
+		if(g_num==128)
+			g_num=0;
+		g_lls_app.lls_value[0] = g_num++;
+		for(tmp=1;tmp < notify->attribute_value_length - 3;tmp++)
+			g_lls_app.lls_value[tmp] = tmp;
+		memcpy(notify->att_req.attribute_value, &g_lls_app.lls_value, notify->attribute_value_length - 3);
+		status =  bt_gatts_send_charc_value_notification_indication(conn_handle, notify);
+		BT_LOGD("LLS", "bt_lls_notify : notificaiton packet=%d, status = %d", g_num, status);
+	}
+}
 
 /*****************************************************************************
 * FUNCTION

@@ -37,6 +37,7 @@
 
 ble_pxp_context_t g_ble_pxp_ctx;
 
+int connect_flag=0;
 
 /*****************************************************************************
 * FUNCTION
@@ -71,6 +72,7 @@ static ble_gatt_srv_status_t ble_pxp_gatt_srv_handle(ble_gatt_srv_event_t event,
 {
     ble_gatt_srv_status_t ret = BLE_GATT_SRV_STATUS_OK;
     ble_gatt_char_alter_level_t *char_al = NULL;
+    ble_gatt_srv_connect_t *connect_info = NULL;
 
     ble_gatt_report("[pxp]srv_handle(s)--ent: 0x%x\n", event);
 
@@ -80,6 +82,16 @@ static ble_gatt_srv_status_t ble_pxp_gatt_srv_handle(ble_gatt_srv_event_t event,
             ble_gatt_report("[pxp]srv_handle(al_w)--hd: 0x%x, al: %d", char_al->handle, char_al->al);
             break;
         }
+		case BLE_GATT_SRV_LE_CONNECT: {
+            connect_info = (ble_gatt_srv_connect_t *)para;
+			connect_flag = connect_info->handle;
+            ble_gatt_report("[pxp]srv_handle connect hd: 0x%x", connect_info->handle);
+            break;
+		}
+		case BLE_GATT_SRV_LE_DISCONNECT: {
+            ble_gatt_report("[pxp]srv_handle disconnect hd");
+            break;
+		}
 
         default:
             break;

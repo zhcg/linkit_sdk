@@ -126,7 +126,7 @@ const bt_gatts_service_t bt_if_gatt_service = {
 * RETURNS
 *  uint32_t
 *****************************************************************************/
-char gatts_device_name[256] = {"MediaTek_PXP"};
+char gatts_device_name[256] = {"MediaTek_ZCG"};
 static uint32_t bt_if_gap_dev_name_callback (const uint8_t rw, uint16_t handle, void *data, uint16_t size, uint16_t offset)
 {
     uint32_t str_size = strlen(gatts_device_name);
