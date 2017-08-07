@@ -56,7 +56,7 @@ int fputc(int ch, FILE *f)
 {
     /* Place your implementation of fputc here */
     /* e.g. write a character to the HAL_UART_2 one at a time */
-    hal_uart_put_char(HAL_UART_2, ch);
+    hal_uart_put_char(HAL_UART_0, ch);
     return ch;
 }
 
@@ -70,17 +70,17 @@ static void plain_log_uart_init(void)
     hal_uart_config_t uart_config;
 	
     /* gpio config for uart2 */
-    hal_gpio_init(HAL_GPIO_0);
-    hal_gpio_init(HAL_GPIO_1);
-    hal_pinmux_set_function(HAL_GPIO_0, HAL_GPIO_0_U2RXD);
-    hal_pinmux_set_function(HAL_GPIO_1, HAL_GPIO_1_U2TXD);
+    hal_gpio_init(HAL_GPIO_16);
+    hal_gpio_init(HAL_GPIO_17);
+    hal_pinmux_set_function(HAL_GPIO_16, HAL_GPIO_16_U0RXD);
+    hal_pinmux_set_function(HAL_GPIO_17, HAL_GPIO_17_U0TXD);
 
     /* COM port settings */
     uart_config.baudrate = HAL_UART_BAUDRATE_115200;
     uart_config.word_length = HAL_UART_WORD_LENGTH_8;
     uart_config.stop_bit = HAL_UART_STOP_BIT_1;
     uart_config.parity = HAL_UART_PARITY_NONE;
-    hal_uart_init(HAL_UART_2, &uart_config);
+    hal_uart_init(HAL_UART_0, &uart_config);
 }
 
 /**
